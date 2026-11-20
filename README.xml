@@ -1,0 +1,108 @@
+# Home Lab Infrastructure
+
+Personal infrastructure lab built around Proxmox VE.
+
+## Hardware
+
+| Component | Specification |
+|---|---|
+| CPU | AMD Ryzen 9 7900 |
+| CPU Cores | 12 cores / 24 threads |
+| RAM | 128 GB DDR5 ECC |
+| Storage | 1 TB NVMe + 2 × 2 TB NVMe |
+| Network | 10 GbE |
+| Public IP | Dedicated public IP |
+| Hypervisor | Proxmox VE |
+
+## Architecture
+
+```text
+Internet
+   |
+Dedicated Public IP
+   |
+Edge Firewall
+   |
+10 GbE
+   |
+Proxmox VE
+   |
+   +-- Management VLAN
+   +-- Server VLAN
+   +-- DMZ VLAN
+   +-- Client VLAN
+   +-- IoT VLAN
+   +-- Lab VLAN
+```
+
+## VLANs
+
+| VLAN | Network | Purpose |
+|---:|---|---|
+| 10 | 10.10.10.0/24 | Management |
+| 20 | 10.10.20.0/24 | Servers |
+| 30 | 10.10.30.0/24 | DMZ |
+| 40 | 10.10.40.0/24 | Clients |
+| 50 | 10.10.50.0/24 | IoT |
+| 60 | 10.10.60.0/24 | Lab |
+
+## VM Inventory
+
+| VM | Purpose | vCPU | RAM | VLAN |
+|---|---|---:|---:|---:|
+| docker-01 | Docker workloads | 6 | 16 GB | 20 |
+| monitor-01 | Monitoring | 4 | 8 GB | 20 |
+| proxy-01 | Reverse proxy | 2 | 4 GB | 30 |
+| lab-01 | Testing / experiments | 4 | 8 GB | 60 |
+
+## Storage
+
+| Device | Size | Purpose |
+|---|---:|---|
+| NVMe-01 | 1 TB | Proxmox / system |
+| NVMe-02 | 2 TB | Primary VM storage |
+| NVMe-03 | 2 TB | Application / lab storage |
+
+Local storage is not considered a backup.
+
+## Goals
+
+- Build a realistic self-hosted infrastructure environment
+- Practice virtualization with Proxmox VE
+- Practice Linux administration
+- Deploy containerized applications
+- Implement network segmentation
+- Build monitoring and alerting
+- Automate configuration with Ansible
+- Document infrastructure and operational procedures
+- Practice backup and disaster recovery procedures
+
+## Roadmap
+
+- [x] Document hardware
+- [x] Define network architecture
+- [x] Define VLAN structure
+- [x] Define VM inventory
+- [x] Document storage strategy
+- [x] Document backup strategy
+- [ ] Deploy Proxmox
+- [ ] Configure VLANs
+- [ ] Deploy Docker VM
+- [ ] Deploy monitoring
+- [ ] Deploy reverse proxy
+- [ ] Configure Ansible
+- [ ] Implement automated backups
+- [ ] Test disaster recovery
+
+## Security
+
+- Management interfaces should not be exposed directly to the Internet.
+- Inter-VLAN traffic should be denied by default.
+- Secrets should never be committed to Git.
+- Public services should be isolated in the DMZ.
+- Administrative access should use SSH keys where possible.
+- Infrastructure changes should be documented.
+
+## Status
+
+Active development.
