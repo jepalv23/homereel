@@ -4,7 +4,7 @@ A tiny command-line catalog for your home movie collection. Point it at the
 folder on your NAS, external drive, or media PC, and it builds a searchable
 library where you can track what you've watched and rate what you liked.
 
-![CI](https://github.com/YOUR-USERNAME/homereel/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/jepalv23/homereel/actions/workflows/ci.yml/badge.svg)
 
 ## Features
 - Scans folders recursively for video files
@@ -72,5 +72,4 @@ SPECS.md       requirements, data model, roadmap
 ## Contributing
 Issues and pull requests are welcome. Please add a test for any new behavior.
 
-## License
-MIT, see [LICENSE](LICENSE).
+
