@@ -1,166 +1,77 @@
-# promax-setup
-# Homelab Infrastructure
+# HomeReel 🎬
 
-A production-style personal infrastructure lab built around a single high-performance virtualization host.
+A tiny command-line catalog for your home movie collection. Point it at the
+folder on your NAS, external drive, or media PC, and it builds a searchable
+library where you can track what you've watched and rate what you liked.
 
-The lab is used to experiment with virtualization, containerization, networking, observability, automation, backups, and self-hosted services while keeping the environment reproducible and documented.
+![CI](https://github.com/jepalv23/homereel/actions/workflows/ci.yml/badge.svg)
 
-## Hardware
+## Features
+- Scans folders recursively for video files
+- Guesses title and year from messy filenames (`The.Matrix.1999.1080p.mkv` → *The Matrix (1999)*)
+- Stores everything in a local SQLite file, so there's no server and no cloud
+- Search, filter unwatched, mark watched, rate 1-5
+- Library stats and CSV export
+- Zero runtime dependencies
 
-| Component | Specification |
-|---|---|
-| CPU | AMD Ryzen 9 7900 — 12 cores / 24 threads |
-| Memory | 128 GB DDR5 ECC |
-| Boot / OS storage | 1 TB NVMe SSD |
-| VM / container storage | 2 × 2 TB NVMe SSDs |
-| Network | 10 GbE |
-| WAN | Dedicated public IP |
-| Hypervisor | Proxmox VE |
+## Requirements
+- Python 3.9 or newer
 
-### Design goals
-
-1. Keep the hypervisor boring and stable.
-2. Isolate workloads with VLANs and firewall policy.
-3. Prefer infrastructure-as-code and declarative configuration.
-4. Treat backups as part of the system, not an afterthought.
-5. Make services disposable: a failed VM should be replaceable from documentation and configuration.
-6. Document failures and operational decisions.
-
-## Architecture
-
-```text
-                         Internet
-                            |
-                     Dedicated Public IP
-                            |
-                    ISP / Edge Firewall
-                            |
-                         10 GbE
-                            |
-                 +----------------------+
-                 | Proxmox VE Host      |
-                 | Ryzen 9 7900         |
-                 | 128 GB ECC RAM       |
-                 +----------+-----------+
-                            |
-                    Linux Bridge / VLANs
-                            |
-        +-------------------+-------------------+
-        |                   |                   |
-     VLAN 10             VLAN 20             VLAN 30
-   Management            Servers              DMZ
-        |                   |                   |
-   Proxmox UI          VMs / LXCs          Public-facing
-   SSH / monitoring    Docker workloads     reverse proxy
+## Installation
+```bash
+git clone https://github.com/YOUR-USERNAME/homereel.git
+cd homereel
+pip install -e .
 ```
 
-## Virtualization Plan
+## Usage
+```bash
+# Add movies from a folder (safe to run again; no duplicates)
+homereel scan /mnt/nas/movies
 
-The host is intentionally over-provisioned so workloads can be created, destroyed, and tested without constantly redesigning the platform.
+# See what you have
+homereel list
+homereel list --search matrix
+homereel list --unwatched
 
-| Guest | Type | vCPU | RAM | Purpose |
-|---|---|---:|---:|---|
-| `pve-mgmt` | VM | 2 | 4 GB | Management utilities |
-| `docker-01` | VM | 6 | 16 GB | Container workloads |
-| `monitoring-01` | VM | 4 | 12 GB | Prometheus / Grafana |
-| `dns-01` | LXC | 2 | 1 GB | DNS / network services |
-| `proxy-01` | VM | 2 | 4 GB | Reverse proxy |
-| `dev-01` | VM | 4 | 8 GB | Development sandbox |
-| `k3s-01` | VM | 4 | 8 GB | Kubernetes experiments |
+# Track your viewing
+homereel watch 3
+homereel rate 3 5
 
-> Resource assignments are a starting point rather than a claim that every workload must run simultaneously.
-
-## Storage
-
-The three NVMe devices have distinct responsibilities:
-
-```text
-1 TB NVMe
-└── Proxmox VE
-    ├── Host OS
-    └── ISO / templates
-
-2 TB NVMe #1
-└── VM / LXC storage
-    ├── Production workloads
-    └── Application data
-
-2 TB NVMe #2
-└── VM / LXC storage
-    ├── Lab workloads
-    └── Snapshots / temporary datasets
+# Housekeeping
+homereel stats
+homereel prune                 # drop entries for deleted files
+homereel export movies.csv
 ```
 
-Important: local NVMe storage is not considered a backup. Backups should ultimately live on separate physical storage or another system.
-
-## Networking
-
-Initial VLAN plan:
-
-| VLAN | Name | CIDR | Purpose |
-|---:|---|---|---|
-| 10 | Management | `10.10.10.0/24` | Hypervisor and infrastructure management |
-| 20 | Servers | `10.10.20.0/24` | Internal services |
-| 30 | DMZ | `10.10.30.0/24` | Internet-facing services |
-| 40 | Clients | `10.10.40.0/24` | Trusted devices |
-| 50 | IoT | `10.10.50.0/24` | Untrusted smart devices |
-| 60 | Lab | `10.10.60.0/24` | Experiments and intentionally broken workloads |
-
-The dedicated public IP should terminate at the edge firewall/router rather than being assigned directly to random internal guests.
-
-## Repository Layout
-
-```text
-home-lab/
-├── ansible/
-│   ├── inventories/
-│   ├── playbooks/
-│   └── roles/
-├── diagrams/
-├── docs/
-│   ├── architecture.md
-│   ├── networking.md
-│   ├── storage.md
-│   ├── backup-strategy.md
-│   └── operations.md
-├── infrastructure/
-│   ├── proxmox/
-│   └── terraform/
-├── services/
-│   ├── docker/
-│   ├── monitoring/
-│   ├── networking/
-│   └── reverse-proxy/
-├── scripts/
-│   ├── backup/
-│   ├── maintenance/
-│   └── health-checks/
-├── .env.example
-├── .gitignore
-└── README.md
+Example output:
+```
+$ homereel list
+[x]    1  Heat (1995)  ****
+[ ]    2  The Matrix (1999)
+[ ]    3  Up (2009)
 ```
 
-## Operational Principles
+Use a different database file with `--db my.db` or the `HOMEREEL_DB` environment variable.
 
-- No credentials in Git.
-- Management interfaces are never exposed directly to the Internet.
-- Public services live in the DMZ.
-- Backups are tested by restoring them.
-- Configuration changes are documented.
-- Monitoring should detect failures before a user notices them.
-- Lab workloads are isolated from important services.
+You can also run it without installing: `python -m homereel list`.
 
-## Roadmap
+## Running the tests
+```bash
+pip install -e ".[dev]"
+pytest
+```
 
-- [x] Install Proxmox VE
-- [x] Establish storage layout
-- [x] Define VLAN architecture
-- [ ] Build management VM
-- [ ] Deploy monitoring
-- [ ] Deploy centralized logging
-- [ ] Configure automated backups
-- [ ] Add Ansible provisioning
-- [ ] Add Terraform/Proxmox definitions
-- [ ] Create public-service DMZ
-- [ ] Document disaster recovery
-- [ ] Add alerting and uptime checks
+## Project layout
+```
+homereel/      application code (scanner, db, cli)
+tests/         pytest tests
+SPECS.md       requirements, data model, roadmap
+```
+
+## Contributing
+Issues and pull requests are welcome. Please add a test for any new behavior.
+
+
+
+
